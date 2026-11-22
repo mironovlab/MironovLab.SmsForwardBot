@@ -1,0 +1,9 @@
+@host = http://localhost:8090
+@webhookSecret = YOUR_WEBHOOK_SECRET
+
+POST {{host}}/webhooks/discord/{{webhookSecret}}
+Content-Type: application/json
+
+{ "embeds": [] }
+
+###

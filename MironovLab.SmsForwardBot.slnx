@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/deploy/" />
+  <Folder Name="/deploy/systemd/">
+    <File Path="deploy/systemd/smsforwardbot.service" />
+  </Folder>
+  <Project Path="MironovLab.SmsForwardBot/MironovLab.SmsForwardBot.csproj" Id="5fdb7240-a95e-4c3f-ac2d-999b129e4e00" />
+</Solution>
