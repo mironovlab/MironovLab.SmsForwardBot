@@ -37,7 +37,7 @@ internal static class SmsForwardBotServiceCollectionExtensions
             RetryCount = 0
         };
         var httpClient = services.GetRequiredKeyedService<HttpClient>(TelegramHttpClientKey);
-        var client = new TelegramBotClient(options, httpClient);
+        var client = new TelegramBotClientWithDiagnostics(options, httpClient);
 
         // The SDK uses the origin only. Keep the path of a Bot API server behind a reverse proxy.
         if (settings.TelegramApiUrl.AbsolutePath != "/")

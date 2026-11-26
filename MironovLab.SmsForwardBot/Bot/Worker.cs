@@ -59,13 +59,16 @@ internal sealed class Worker(
             }
             catch (ApiRequestException error)
             {
-                logger.LogWarning("Telegram Bot API returned error code {ErrorCode}.", error.ErrorCode);
+                var log = TelegramBotClientWithDiagnostics.GetLogDetails(error, settings.BotToken);
+                logger.LogWarning(log.Error, "Telegram Bot API returned error code {ErrorCode}.{TelegramHttpResponse}",
+                    error.ErrorCode, log.Response);
                 await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, error.Parameters?.RetryAfter ?? 5)), stoppingToken);
             }
             catch (Exception error) when (!stoppingToken.IsCancellationRequested &&
                 error is RequestException or OperationCanceledException or IOException or UnauthorizedAccessException)
             {
-                logger.LogWarning("Failed to process Telegram updates ({ErrorType}). Retrying.", error.GetType().Name);
+                var log = TelegramBotClientWithDiagnostics.GetLogDetails(error, settings.BotToken);
+                logger.LogWarning(log.Error, "Failed to process Telegram updates. Retrying.{TelegramHttpResponse}", log.Response);
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
             }
         }
@@ -109,7 +112,7 @@ internal sealed class Worker(
         }
         catch (BridgeException error)
         {
-            logger.LogWarning("Bridge WebUI request failed with HTTP {StatusCode}.", (int)error.Status);
+            logger.LogWarning(error, "Bridge WebUI request failed with HTTP {StatusCode}.", (int)error.Status);
             reply = new(error.Status == HttpStatusCode.Unauthorized
                 ? Resources.Commands_BridgeLoginRejected
                 : string.Format(settings.Language, Resources.Commands_BridgeHttpError, (int)error.Status));
@@ -117,7 +120,7 @@ internal sealed class Worker(
         catch (Exception error) when (!token.IsCancellationRequested &&
             error is HttpRequestException or JsonException or OperationCanceledException)
         {
-            logger.LogWarning("Failed to read data from the bridge WebUI ({ErrorType}).", error.GetType().Name);
+            logger.LogWarning(error, "Failed to read data from the bridge WebUI.");
             reply = new(Resources.Commands_BridgeReadFailed);
         }
 
@@ -299,18 +302,18 @@ internal sealed class Worker(
         }
         catch (BridgeException error) when (error.Error != "wrong_line_agent" && (int)error.Status >= 500)
         {
-            logger.LogWarning("Bridge returned HTTP {StatusCode} for SMS submission. The outcome is unknown.", (int)error.Status);
+            logger.LogWarning(error, "Bridge returned HTTP {StatusCode} for SMS submission. The outcome is unknown.", (int)error.Status);
             return string.Format(settings.Language, Resources.Commands_SmsSubmissionHttpError, (int)error.Status);
         }
         catch (BridgeException error) when (!string.IsNullOrWhiteSpace(error.Detail))
         {
-            logger.LogWarning("Bridge rejected SMS submission with HTTP {StatusCode}.", (int)error.Status);
+            logger.LogWarning(error, "Bridge rejected SMS submission with HTTP {StatusCode}.", (int)error.Status);
             return string.Format(settings.Language, Resources.Commands_SmsSubmissionRejected, error.Detail);
         }
         catch (Exception error) when (!token.IsCancellationRequested &&
             error is HttpRequestException or JsonException or OperationCanceledException)
         {
-            logger.LogWarning("Bridge did not confirm SMS submission ({ErrorType}).", error.GetType().Name);
+            logger.LogWarning(error, "Bridge did not confirm SMS submission.");
             return Resources.Commands_SmsSubmissionUnconfirmed;
         }
     }

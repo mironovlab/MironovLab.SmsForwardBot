@@ -32,9 +32,9 @@ public sealed class DiscordWebhookController(
         {
             payload = await Request.ReadFromJsonAsync<DiscordPayload>(token);
         }
-        catch (JsonException)
+        catch (JsonException error)
         {
-            logger.LogWarning("Rejected a Discord webhook request with invalid JSON.");
+            logger.LogWarning(error, "Rejected a Discord webhook request with invalid JSON.");
             return BadRequest();
         }
 

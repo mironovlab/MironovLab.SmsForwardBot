@@ -26,14 +26,17 @@ internal sealed class DiscordForwarder(
             }
             catch (ApiRequestException error)
             {
-                logger.LogWarning("Telegram rejected a queued notification with API error {ErrorCode}. Retrying.", error.ErrorCode);
+                var log = TelegramBotClientWithDiagnostics.GetLogDetails(error, settings.BotToken);
+                logger.LogWarning(log.Error, "Telegram rejected a queued notification with API error {ErrorCode}. Retrying.{TelegramHttpResponse}",
+                    error.ErrorCode, log.Response);
                 await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, error.Parameters?.RetryAfter ?? 5)), stoppingToken);
                 continue;
             }
             catch (Exception error) when (!stoppingToken.IsCancellationRequested &&
                 error is RequestException or OperationCanceledException)
             {
-                logger.LogWarning("Failed to forward a queued notification to Telegram. Retrying.");
+                var log = TelegramBotClientWithDiagnostics.GetLogDetails(error, settings.BotToken);
+                logger.LogWarning(log.Error, "Failed to forward a queued notification to Telegram. Retrying.{TelegramHttpResponse}", log.Response);
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
                 continue;
             }
@@ -47,7 +50,7 @@ internal sealed class DiscordForwarder(
                 }
                 catch (Exception error) when (error is IOException or UnauthorizedAccessException)
                 {
-                    logger.LogError("Failed to update the Telegram notification queue on disk. Retrying.");
+                    logger.LogError(error, "Failed to update the Telegram notification queue on disk. Retrying.");
                     await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
                 }
             }

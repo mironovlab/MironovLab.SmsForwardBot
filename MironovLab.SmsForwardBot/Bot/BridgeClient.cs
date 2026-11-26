@@ -86,19 +86,21 @@ internal sealed class BridgeClient(BotSettings settings) : IDisposable
             return;
 
         BridgeError? error = null;
+        JsonException? parseError = null;
         if (response.Content.Headers.ContentType?.MediaType == "application/json")
         {
             try
             {
                 error = await response.Content.ReadFromJsonAsync<BridgeError>(token);
             }
-            catch (JsonException)
+            catch (JsonException exception)
             {
                 // Preserve the HTTP status when a proxy returns a different error format.
+                parseError = exception;
             }
         }
 
-        throw new BridgeException(response.StatusCode, error?.Error, error?.Detail);
+        throw new BridgeException(response.StatusCode, error?.Error, error?.Detail, parseError);
     }
 
     private static async Task<T> ReadAsync<T>(HttpResponseMessage response, CancellationToken token) =>
@@ -110,7 +112,8 @@ internal sealed class BridgeClient(BotSettings settings) : IDisposable
     private sealed record BridgeError(string? Error, string? Detail);
 }
 
-internal sealed class BridgeException(HttpStatusCode status, string? error, string? detail) : Exception
+internal sealed class BridgeException(HttpStatusCode status, string? error, string? detail, Exception? innerException)
+    : Exception(null, innerException)
 {
     public HttpStatusCode Status { get; } = status;
     public string? Error { get; } = error;
