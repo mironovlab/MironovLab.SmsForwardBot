@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MironovLab.SmsForwardBot.Bot;
 
@@ -29,7 +30,7 @@ internal sealed class BotStateStore : IDisposable
         {
             var now = DateTimeOffset.UtcNow;
             var seen = state.Seen.Where(pair => now - pair.Value <= DuplicateWindow).ToDictionary();
-            var pending = new List<string>();
+            var pending = new List<TelegramNotification>();
             var latest = state.LatestReceived;
             foreach (var notification in notifications)
             {
@@ -39,7 +40,7 @@ internal sealed class BotStateStore : IDisposable
                 if (notification.Fingerprint is { } key && !seen.TryAdd(key, now))
                     continue;
 
-                pending.AddRange(TelegramMessages.SplitText(notification.Text));
+                pending.AddRange(TelegramMessages.SplitNotification(notification.Message));
                 if (notification.Received is { } received && (latest is null || received.ReceivedAt >= latest.ReceivedAt))
                     latest = received;
             }
@@ -103,6 +104,43 @@ internal sealed record BotState
     public long UpdateOffset { get; init; }
     public string? SelectedLine { get; init; }
     public ReceivedSms? LatestReceived { get; init; }
-    public string[] Pending { get; init; } = [];
+    [JsonConverter(typeof(PendingNotificationsConverter))]
+    public TelegramNotification[] Pending { get; init; } = [];
     public Dictionary<string, DateTimeOffset> Seen { get; init; } = [];
+}
+
+internal sealed class PendingNotificationsConverter : JsonConverter<TelegramNotification[]>
+{
+    public override TelegramNotification[] Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType != JsonTokenType.StartArray)
+            throw new JsonException("The notification queue must be an array.");
+
+        var pending = new List<TelegramNotification>();
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+        {
+            // Existing state files store plain text as JSON strings.
+            pending.Add(reader.TokenType == JsonTokenType.String
+                ? new TelegramNotification(reader.GetString()!)
+                : JsonSerializer.Deserialize<TelegramNotification>(ref reader, options)
+                    ?? throw new JsonException("The notification queue contains an empty entry."));
+        }
+        if (reader.TokenType != JsonTokenType.EndArray)
+            throw new JsonException("The notification queue is incomplete.");
+
+        return pending.ToArray();
+    }
+
+    public override void Write(Utf8JsonWriter writer, TelegramNotification[] value, JsonSerializerOptions options)
+    {
+        writer.WriteStartArray();
+        foreach (var message in value)
+        {
+            if (message.Entities is null)
+                writer.WriteStringValue(message.Text);
+            else
+                JsonSerializer.Serialize(writer, message, options);
+        }
+        writer.WriteEndArray();
+    }
 }

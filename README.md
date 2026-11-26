@@ -84,7 +84,7 @@ When running the bot as a service, set `StateFile` to an absolute path and grant
 
 ## Commands
 
-In a private chat, send `/start` or `/help` to open the bot's keyboard. Use the buttons or enter commands without arguments. The bot prompts for input one step at a time. If a step fails, the bot repeats it. A new command cancels the action in progress.
+In the owner's private chat, **Menu** by the message field lists the bot's commands. Choose **Show bot keyboard** there or send `/start` or `/help` to open the collapsible keyboard. Use the buttons or enter commands without arguments. The bot prompts for input one step at a time. Use `/cancel` to cancel the current action.
 
 | Command | Action |
 | --- | --- |

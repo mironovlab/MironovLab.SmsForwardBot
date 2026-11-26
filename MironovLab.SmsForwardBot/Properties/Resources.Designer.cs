@@ -130,8 +130,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         ////line — select the sending line
         ////auto — use the line that received the last incoming SMS
         ////cancel — cancel the current action
-        ///
-        ///Starting another command cancels the current action..
+        ////help — show the keyboard and keep the current action.
         /// </summary>
         internal static string Commands_Help {
             get {
@@ -410,6 +409,15 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Show bot keyboard.
+        /// </summary>
+        internal static string Commands_ShowKeyboard {
+            get {
+                return ResourceManager.GetString("Commands_ShowKeyboard", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to The bridge queued SMS #{0} on line {2} ({1} parts)..
         /// </summary>
         internal static string Commands_SmsQueued {
@@ -473,7 +481,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Parts accepted: {0}.
+        ///   Looks up a localized string similar to Parts accepted:.
         /// </summary>
         internal static string Notifications_AcceptedParts {
             get {
@@ -500,7 +508,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Parts delivered: {0}.
+        ///   Looks up a localized string similar to Parts delivered:.
         /// </summary>
         internal static string Notifications_DeliveredParts {
             get {
@@ -518,7 +526,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Delivery status recorded at: {0}.
+        ///   Looks up a localized string similar to Delivery status recorded at:.
         /// </summary>
         internal static string Notifications_DeliveryRecordedAt {
             get {
@@ -536,7 +544,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Reason: {0}.
+        ///   Looks up a localized string similar to Reason:.
         /// </summary>
         internal static string Notifications_FailureReason {
             get {
@@ -554,7 +562,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Line: {0}.
+        ///   Looks up a localized string similar to Line:.
         /// </summary>
         internal static string Notifications_Line {
             get {
@@ -572,7 +580,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Phone: {0}.
+        ///   Looks up a localized string similar to Phone:.
         /// </summary>
         internal static string Notifications_Phone {
             get {
@@ -581,7 +589,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Queued at: {0}.
+        ///   Looks up a localized string similar to Queued at:.
         /// </summary>
         internal static string Notifications_QueuedAt {
             get {
@@ -590,7 +598,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to To: {0}.
+        ///   Looks up a localized string similar to To:.
         /// </summary>
         internal static string Notifications_Recipient {
             get {
@@ -599,7 +607,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to From: {0}.
+        ///   Looks up a localized string similar to From:.
         /// </summary>
         internal static string Notifications_Sender {
             get {
@@ -608,7 +616,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to SMS ID: {0}.
+        ///   Looks up a localized string similar to SMS ID:.
         /// </summary>
         internal static string Notifications_SmsId {
             get {
@@ -617,7 +625,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Time: {0}.
+        ///   Looks up a localized string similar to Time:.
         /// </summary>
         internal static string Notifications_Timestamp {
             get {

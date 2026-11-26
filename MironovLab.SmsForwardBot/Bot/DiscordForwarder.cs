@@ -21,7 +21,7 @@ internal sealed class DiscordForwarder(
 
             try
             {
-                await telegram.SendPlainTextAsync(settings.OwnerUserId, message, stoppingToken);
+                await telegram.SendTextAsync(settings.OwnerUserId, message.Text, stoppingToken, entities: message.Entities);
                 logger.LogInformation("Forwarded a queued notification to Telegram.");
             }
             catch (ApiRequestException error)

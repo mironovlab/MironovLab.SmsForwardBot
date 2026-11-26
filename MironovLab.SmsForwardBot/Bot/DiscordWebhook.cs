@@ -3,6 +3,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using MironovLab.SmsForwardBot.Properties;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 
 namespace MironovLab.SmsForwardBot.Bot;
 
@@ -59,43 +61,41 @@ internal sealed class DiscordWebhook(
         var originalTimeField = inbound ? "Originally received" : delivery ? "Originally settled" : "Originally finished";
         var timestamp = Field(embed, originalTimeField) ?? embed.Timestamp;
         var hasTime = TryParseTimestamp(timestamp, out var time);
-        var contactLine = string.Format(settings.Language, inbound ? Resources.Notifications_Sender : Resources.Notifications_Recipient, contact);
+        var message = new NotificationText(heading);
+        message.AppendField(inbound ? Resources.Notifications_Sender : Resources.Notifications_Recipient, contact);
         var phone = Field(embed, "Phone");
-        var message = new StringBuilder(heading)
-            .Append('\n').Append(contactLine)
-            .Append('\n').Append(string.Format(settings.Language, Resources.Notifications_Line, module));
-        if (!string.IsNullOrWhiteSpace(phone) && !string.Equals(phone, "unknown", StringComparison.OrdinalIgnoreCase))
-            message.Append($" ({phone})");
+        var line = !string.IsNullOrWhiteSpace(phone) && !string.Equals(phone, "unknown", StringComparison.OrdinalIgnoreCase)
+            ? $"{module} ({phone})"
+            : module;
+        message.AppendField(Resources.Notifications_Line, line);
 
         var smsId = !inbound && Field(embed, "SMS ID")?.Trim() is { Length: > 0 } id
             ? "#" + id.TrimStart('#')
             : null;
         if (smsId is not null)
-            message.Append('\n').Append(string.Format(settings.Language, Resources.Notifications_SmsId, smsId));
+            message.AppendField(Resources.Notifications_SmsId, smsId);
 
         if (delivery && Field(embed, "Sent") is { Length: > 0 } sent)
         {
             var sentTimeText = TryParseTimestamp(sent, out var sentTime) ? FormatTimestamp(sentTime) : sent;
-            message.Append('\n').Append(string.Format(settings.Language, Resources.Notifications_QueuedAt, sentTimeText));
+            message.AppendField(Resources.Notifications_QueuedAt, sentTimeText);
         }
 
         if (hasTime)
-            message.Append('\n').Append(string.Format(settings.Language,
-                delivery ? Resources.Notifications_DeliveryRecordedAt : Resources.Notifications_Timestamp, FormatTimestamp(time)));
+            message.AppendField(delivery ? Resources.Notifications_DeliveryRecordedAt : Resources.Notifications_Timestamp, FormatTimestamp(time));
 
         var parts = Field(embed, delivery ? "Parts delivered" : "Parts sent");
         if (parts is { Length: > 0 } && Field(embed, "Parts total") is { Length: > 0 } totalParts)
             parts = $"{parts}/{totalParts}";
 
         if (parts is { Length: > 0 })
-            message.Append('\n').Append(string.Format(settings.Language,
-                delivery ? Resources.Notifications_DeliveredParts : Resources.Notifications_AcceptedParts, parts));
+            message.AppendField(delivery ? Resources.Notifications_DeliveredParts : Resources.Notifications_AcceptedParts, parts);
 
         if (Field(embed, "Error") is { Length: > 0 } error)
-            message.Append('\n').Append(string.Format(settings.Language, Resources.Notifications_FailureReason, error));
+            message.AppendField(Resources.Notifications_FailureReason, error);
 
         if (inbound && embed.Description is { Length: > 0 } body)
-            message.Append($"\n\n{body}");
+            message.AppendParagraph(body);
 
         // Derive the old title from stable fields so retries match fingerprints already on disk.
         if (status == "partially_delivered" && parts is { Length: > 0 })
@@ -109,7 +109,7 @@ internal sealed class DiscordWebhook(
             ? Fingerprint($"{smsId[1..]} {fingerprintTitle}")
             : null;
         var received = inbound ? new ReceivedSms(module, hasTime ? time : DateTimeOffset.UtcNow, contact) : null;
-        return new DiscordNotification(message.ToString(), fingerprint, received, bareIdFingerprint);
+        return new DiscordNotification(message.Build(), fingerprint, received, bareIdFingerprint);
 
         string Fingerprint(string title) => Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
         {
@@ -131,24 +131,24 @@ internal sealed class DiscordWebhook(
         var instance = embed.Footer?.Text;
         var hasTime = TryParseTimestamp(timestamp, out var time);
 
-        var message = new StringBuilder(Resources.Notifications_BridgeAlertTitle)
-            .Append('\n').Append(title);
+        var message = new NotificationText(Resources.Notifications_BridgeAlertTitle);
+        message.AppendLine(title);
         if (!string.IsNullOrWhiteSpace(module))
-            message.Append('\n').Append(string.Format(settings.Language, Resources.Notifications_Line, module));
+            message.AppendField(Resources.Notifications_Line, module);
         if (!string.IsNullOrWhiteSpace(phone) && !string.Equals(phone, "unknown", StringComparison.OrdinalIgnoreCase))
-            message.Append('\n').Append(string.Format(settings.Language, Resources.Notifications_Phone, phone));
+            message.AppendField(Resources.Notifications_Phone, phone);
         if (hasTime)
-            message.Append('\n').Append(string.Format(settings.Language, Resources.Notifications_Timestamp, FormatTimestamp(time)));
+            message.AppendField(Resources.Notifications_Timestamp, FormatTimestamp(time));
         if (!string.IsNullOrWhiteSpace(embed.Description))
-            message.Append("\n\n").Append(embed.Description);
+            message.AppendParagraph(embed.Description);
         if (!string.IsNullOrWhiteSpace(instance))
-            message.Append("\n\n").Append(instance);
+            message.AppendParagraph(instance);
 
         var fingerprint = hasTime ? Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
         {
             category, title, module, phone, timestamp, embed.Description, instance
         }))) : null;
-        return new DiscordNotification(message.ToString(), fingerprint, Received: null, BareIdFingerprint: null);
+        return new DiscordNotification(message.Build(), fingerprint, Received: null, BareIdFingerprint: null);
     }
 
     private static (string Heading, string? LegacyOutcome)? GetFormat(string? category, string? status) =>
@@ -198,6 +198,33 @@ internal sealed class DiscordWebhook(
 
     private string FormatTimestamp(DateTimeOffset time) =>
         time.ToString("d MMMM yyyy, HH:mm:ss 'UTC'zzz", settings.Language);
+
+    private sealed class NotificationText
+    {
+        private readonly StringBuilder _text = new();
+        private readonly List<MessageEntity> _entities = [];
+
+        public NotificationText(string heading) => AppendBold(heading);
+
+        public void AppendField(string label, string value)
+        {
+            _text.Append('\n');
+            AppendBold(label);
+            _text.Append(' ').Append(value);
+        }
+
+        public void AppendLine(string value) => _text.Append('\n').Append(value);
+
+        public void AppendParagraph(string value) => _text.Append("\n\n").Append(value);
+
+        public TelegramNotification Build() => new(_text.ToString(), _entities.ToArray());
+
+        private void AppendBold(string text)
+        {
+            _entities.Add(new MessageEntity { Type = MessageEntityType.Bold, Offset = _text.Length, Length = text.Length });
+            _text.Append(text);
+        }
+    }
 }
 
-internal sealed record DiscordNotification(string Text, string? Fingerprint, ReceivedSms? Received, string? BareIdFingerprint);
+internal sealed record DiscordNotification(TelegramNotification Message, string? Fingerprint, ReceivedSms? Received, string? BareIdFingerprint);

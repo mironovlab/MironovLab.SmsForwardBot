@@ -124,8 +124,7 @@
 /line — выбрать линию для отправки
 /auto — использовать линию последнего входящего SMS
 /cancel — отменить текущее действие
-
-Новая команда отменяет текущее действие.</value>
+/help — показать клавиатуру и сохранить текущее действие</value>
   </data>
   <data name="Commands_LinesButton" xml:space="preserve">
     <value>Линии</value>
@@ -144,6 +143,9 @@
   </data>
   <data name="Commands_CancelButton" xml:space="preserve">
     <value>Отмена</value>
+  </data>
+  <data name="Commands_ShowKeyboard" xml:space="preserve">
+    <value>Показать клавиатуру бота</value>
   </data>
   <data name="Commands_SendHelpButton" xml:space="preserve">
     <value>Как отправить SMS</value>
@@ -284,36 +286,36 @@
     <value>Статус доставки SMS неизвестен</value>
   </data>
   <data name="Notifications_Sender" xml:space="preserve">
-    <value>От: {0}</value>
+    <value>От:</value>
   </data>
   <data name="Notifications_Recipient" xml:space="preserve">
-    <value>Кому: {0}</value>
+    <value>Кому:</value>
   </data>
   <data name="Notifications_Line" xml:space="preserve">
-    <value>Линия: {0}</value>
+    <value>Линия:</value>
   </data>
   <data name="Notifications_Phone" xml:space="preserve">
-    <value>Телефон: {0}</value>
+    <value>Телефон:</value>
   </data>
   <data name="Notifications_SmsId" xml:space="preserve">
-    <value>ID SMS: {0}</value>
+    <value>ID SMS:</value>
   </data>
   <data name="Notifications_QueuedAt" xml:space="preserve">
-    <value>Поставлено в очередь: {0}</value>
+    <value>Поставлено в очередь:</value>
   </data>
   <data name="Notifications_Timestamp" xml:space="preserve">
-    <value>Время: {0}</value>
+    <value>Время:</value>
   </data>
   <data name="Notifications_DeliveryRecordedAt" xml:space="preserve">
-    <value>Время определения статуса: {0}</value>
+    <value>Время определения статуса:</value>
   </data>
   <data name="Notifications_AcceptedParts" xml:space="preserve">
-    <value>Принято частей: {0}</value>
+    <value>Принято частей:</value>
   </data>
   <data name="Notifications_DeliveredParts" xml:space="preserve">
-    <value>Доставлено частей: {0}</value>
+    <value>Доставлено частей:</value>
   </data>
   <data name="Notifications_FailureReason" xml:space="preserve">
-    <value>Причина: {0}</value>
+    <value>Причина:</value>
   </data>
 </root>

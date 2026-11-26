@@ -24,6 +24,7 @@ internal static class SmsForwardBotServiceCollectionExtensions
         services.AddSingleton<ITelegramBotClient>(CreateTelegramBotClient);
         services.AddSingleton<IDiscordWebhook, DiscordWebhook>();
         services.AddHostedService<Worker>();
+        services.AddHostedService<TelegramCommandMenu>();
         services.AddHostedService<DiscordForwarder>();
         return services;
     }

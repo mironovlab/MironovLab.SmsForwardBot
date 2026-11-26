@@ -124,8 +124,7 @@
 /line — select the sending line
 /auto — use the line that received the last incoming SMS
 /cancel — cancel the current action
-
-Starting another command cancels the current action.</value>
+/help — show the keyboard and keep the current action</value>
   </data>
   <data name="Commands_LinesButton" xml:space="preserve">
     <value>Lines</value>
@@ -144,6 +143,9 @@ Starting another command cancels the current action.</value>
   </data>
   <data name="Commands_CancelButton" xml:space="preserve">
     <value>Cancel</value>
+  </data>
+  <data name="Commands_ShowKeyboard" xml:space="preserve">
+    <value>Show bot keyboard</value>
   </data>
   <data name="Commands_SendHelpButton" xml:space="preserve">
     <value>How to send SMS</value>
@@ -284,36 +286,36 @@ Starting another command cancels the current action.</value>
     <value>SMS delivery status unknown</value>
   </data>
   <data name="Notifications_Sender" xml:space="preserve">
-    <value>From: {0}</value>
+    <value>From:</value>
   </data>
   <data name="Notifications_Recipient" xml:space="preserve">
-    <value>To: {0}</value>
+    <value>To:</value>
   </data>
   <data name="Notifications_Line" xml:space="preserve">
-    <value>Line: {0}</value>
+    <value>Line:</value>
   </data>
   <data name="Notifications_Phone" xml:space="preserve">
-    <value>Phone: {0}</value>
+    <value>Phone:</value>
   </data>
   <data name="Notifications_SmsId" xml:space="preserve">
-    <value>SMS ID: {0}</value>
+    <value>SMS ID:</value>
   </data>
   <data name="Notifications_QueuedAt" xml:space="preserve">
-    <value>Queued at: {0}</value>
+    <value>Queued at:</value>
   </data>
   <data name="Notifications_Timestamp" xml:space="preserve">
-    <value>Time: {0}</value>
+    <value>Time:</value>
   </data>
   <data name="Notifications_DeliveryRecordedAt" xml:space="preserve">
-    <value>Delivery status recorded at: {0}</value>
+    <value>Delivery status recorded at:</value>
   </data>
   <data name="Notifications_AcceptedParts" xml:space="preserve">
-    <value>Parts accepted: {0}</value>
+    <value>Parts accepted:</value>
   </data>
   <data name="Notifications_DeliveredParts" xml:space="preserve">
-    <value>Parts delivered: {0}</value>
+    <value>Parts delivered:</value>
   </data>
   <data name="Notifications_FailureReason" xml:space="preserve">
-    <value>Reason: {0}</value>
+    <value>Reason:</value>
   </data>
 </root>

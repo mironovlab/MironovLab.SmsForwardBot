@@ -95,7 +95,8 @@ internal sealed class Worker(
     {
         var command = GetCommand(text);
         var input = _pendingInput;
-        _pendingInput = null;
+        var keepInput = command == "/help";
+        _pendingInput = keepInput ? input : null;
         BotResponse? reply;
         try
         {
@@ -125,8 +126,9 @@ internal sealed class Worker(
 
         var parts = TelegramMessages.SplitText(reply.Text).ToArray();
         for (var i = 0; i < parts.Length; i++)
-            await telegram.SendPlainTextAsync(settings.OwnerUserId, parts[i], token, i == parts.Length - 1 ? reply.Keyboard : null);
-        _pendingInput = reply.NextInput;
+            await telegram.SendTextAsync(settings.OwnerUserId, parts[i], token, i == parts.Length - 1 ? reply.Keyboard : null);
+        if (!keepInput)
+            _pendingInput = reply.NextInput;
     }
 
     private async Task<BotResponse> ExecuteCommandAsync(string command, bool hadPendingInput, CancellationToken token) => command switch
@@ -135,7 +137,7 @@ internal sealed class Worker(
         "/lines" => DescribeLines(await bridge.GetOverviewAsync(token)),
         "/line" => DescribeLines(await bridge.GetOverviewAsync(token), Resources.Commands_SelectLinePrompt),
         "/auto" => await EnableAutomaticLineAsync(token),
-        "/send" => new(Resources.Commands_RecipientPrompt, CreateMainKeyboard(), new PendingInput.PhoneNumber()),
+        "/send" => new(Resources.Commands_RecipientPrompt, NextInput: new PendingInput.PhoneNumber()),
         "/reply" => await StartReplyAsync(token),
         "/cancel" => new(hadPendingInput ? Resources.Commands_ActionCancelled : Resources.Commands_NoPendingAction),
         _ => new(Resources.Commands_UnknownCommand)
@@ -252,7 +254,7 @@ internal sealed class Worker(
             return new(Resources.Commands_ReplySenderNotNumber);
 
         return new(string.Format(settings.Language, Resources.Commands_ReplyTextPrompt, recipient),
-            CreateMainKeyboard(), new PendingInput.SmsText(recipient, incoming));
+            NextInput: new PendingInput.SmsText(recipient, incoming));
     }
 
     private static string? NormalizeRecipient(string? input)
