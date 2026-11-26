@@ -46,7 +46,7 @@ internal sealed class Worker(
                     if (update.Message is { Chat.Type: ChatType.Private } message &&
                         message.Chat.Id == settings.OwnerUserId && message.From?.Id == settings.OwnerUserId)
                     {
-                        await HandleInteractionAsync(message.Text, stoppingToken);
+                        await HandleInteractionAsync(message.Text, stoppingToken, sentAt: message.Date);
                     }
                     else if (update.CallbackQuery is { Message.Chat.Type: ChatType.Private } callback &&
                         callback.Message.Chat.Id == settings.OwnerUserId && callback.From.Id == settings.OwnerUserId)
@@ -94,34 +94,38 @@ internal sealed class Worker(
         return command.Success ? command.Groups[1].Value : null;
     }
 
-    private async Task HandleInteractionAsync(string? text, CancellationToken token, string? lineButtonData = null)
+    private async Task HandleInteractionAsync(string? text, CancellationToken token,
+        string? lineButtonData = null, DateTime? sentAt = null)
     {
         var command = GetCommand(text);
         var input = _pendingInput;
-        var keepInput = command == "/help";
+        var activeReply = input is PendingInput.SmsText { IsReply: true } sms ? sms : null;
+        var keepInput = command == "/help" ||
+            (activeReply is not null && (lineButtonData is not null || command is not (null or "/cancel")));
         _pendingInput = keepInput ? input : null;
         BotResponse? reply;
         try
         {
-            if (lineButtonData is not null)
+            if (activeReply is not null && command == "/reply")
+                reply = PromptForReplyText(activeReply);
+            else if (activeReply is not null && command is ("/send" or "/line"))
+                reply = new(WithSender(Resources.Commands_CompletePendingReply, activeReply.Line));
+            else if (lineButtonData is not null)
                 reply = await SelectLineAsync(lineButtonData, fromButton: true, token);
             else if (command is not null)
-                reply = await ExecuteCommandAsync(command, input is not null, token);
+                reply = await ExecuteCommandAsync(command, input is not null, sentAt, token);
             else
                 reply = input is null ? null : await ContinueInputAsync(input, text, token);
         }
         catch (BridgeException error)
         {
-            logger.LogWarning(error, "Bridge WebUI request failed with HTTP {StatusCode}.", (int)error.Status);
-            reply = new(error.Status == HttpStatusCode.Unauthorized
-                ? Resources.Commands_BridgeLoginRejected
-                : string.Format(settings.Language, Resources.Commands_BridgeHttpError, (int)error.Status));
+            reply = new(DescribeBridgeError(error), NextInput: activeReply);
         }
         catch (Exception error) when (!token.IsCancellationRequested &&
             error is HttpRequestException or JsonException or OperationCanceledException)
         {
             logger.LogWarning(error, "Failed to read data from the bridge WebUI.");
-            reply = new(Resources.Commands_BridgeReadFailed);
+            reply = new(Resources.Commands_BridgeReadFailed, NextInput: activeReply);
         }
 
         if (reply is null)
@@ -134,14 +138,15 @@ internal sealed class Worker(
             _pendingInput = reply.NextInput;
     }
 
-    private async Task<BotResponse> ExecuteCommandAsync(string command, bool hadPendingInput, CancellationToken token) => command switch
+    private async Task<BotResponse> ExecuteCommandAsync(string command, bool hadPendingInput, DateTime? sentAt,
+        CancellationToken token) => command switch
     {
         "/start" or "/help" => new(Resources.Commands_Help, CreateMainKeyboard()),
         "/lines" => DescribeLines(await bridge.GetOverviewAsync(token)),
         "/line" => DescribeLines(await bridge.GetOverviewAsync(token), Resources.Commands_SelectLinePrompt),
         "/auto" => await EnableAutomaticLineAsync(token),
-        "/send" => new(Resources.Commands_RecipientPrompt, NextInput: new PendingInput.PhoneNumber()),
-        "/reply" => await StartReplyAsync(token),
+        "/send" => await StartSmsAsync(isReply: false, token),
+        "/reply" => await StartSmsAsync(isReply: true, token, receivedBefore: EndOfMessageSecond(sentAt)),
         "/cancel" => new(hadPendingInput ? Resources.Commands_ActionCancelled : Resources.Commands_NoPendingAction),
         _ => new(Resources.Commands_UnknownCommand)
     };
@@ -150,16 +155,17 @@ internal sealed class Worker(
     {
         switch (input)
         {
-            case PendingInput.PhoneNumber:
+            case PendingInput.PhoneNumber phone:
                 var recipient = NormalizeRecipient(text);
                 return recipient is not null
-                    ? new(string.Format(settings.Language, Resources.Commands_SendTextPrompt, recipient), NextInput: new PendingInput.SmsText(recipient))
-                    : new(Resources.Commands_InvalidRecipient, NextInput: input);
+                    ? new(WithSender(string.Format(settings.Language, Resources.Commands_SendTextPrompt, recipient), phone.Line),
+                        NextInput: new PendingInput.SmsText(recipient, phone.Line, IsReply: false))
+                    : new(WithSender(Resources.Commands_InvalidRecipient, phone.Line), NextInput: input);
             case PendingInput.SmsText sms:
                 return string.IsNullOrWhiteSpace(text)
-                    ? new(Resources.Commands_InvalidSmsText, NextInput: input)
-                    : new(await QueueSmsAsync(sms.Recipient, text, sms.Incoming, token));
-            case PendingInput.Line:
+                    ? new(WithSender(Resources.Commands_InvalidSmsText, sms.Line), NextInput: input)
+                    : await SubmitSmsAsync(sms, text, token);
+            case PendingInput.LineSelection:
                 return await SelectLineAsync(text?.Trim(), fromButton: false, token);
             default:
                 throw new InvalidOperationException("Unknown input step.");
@@ -209,7 +215,7 @@ internal sealed class Worker(
             result.Append("\n\n").Append(prompt);
 
         return new(result.ToString(), buttons.Length > 0 ? new InlineKeyboardMarkup(buttons) : null,
-            prompt is null ? null : new PendingInput.Line());
+            prompt is null ? null : new PendingInput.LineSelection());
     }
 
     // Fixed-length callback data keeps long and non-ASCII line IDs within Telegram's 64-byte limit.
@@ -237,28 +243,70 @@ internal sealed class Worker(
         return new(string.Format(settings.Language, Resources.Commands_LineSelected, selected.Id));
     }
 
-    private async Task<ReceivedSms?> LatestReceivedAsync(CancellationToken token)
+    // Telegram supplies the message date with one-second precision.
+    private static DateTimeOffset? EndOfMessageSecond(DateTime? sentAt) => sentAt is { } date
+        ? new DateTimeOffset(DateTime.SpecifyKind(date, DateTimeKind.Utc)).AddSeconds(1)
+        : null;
+
+    private async Task<ReceivedSms?> LatestReceivedAsync(CancellationToken token, DateTimeOffset? receivedBefore = null)
     {
-        var fromBridge = await bridge.GetLatestReceivedSmsAsync(token);
         var fromWebhook = state.Snapshot.LatestReceived;
+        var fromBridge = await bridge.GetLatestReceivedSmsAsync(token, receivedBefore);
+        var latestWebhook = state.Snapshot.LatestReceived;
+        if (receivedBefore is null || latestWebhook?.ReceivedAt < receivedBefore)
+            fromWebhook = latestWebhook;
+        else if (fromWebhook?.ReceivedAt >= receivedBefore)
+            fromWebhook = null;
+
         return fromWebhook is not null && (fromBridge is null || fromWebhook.ReceivedAt > fromBridge.ReceivedAt)
             ? fromWebhook
             : fromBridge;
     }
 
-    private async Task<BotResponse> StartReplyAsync(CancellationToken token)
+    private async Task<BotResponse> StartSmsAsync(bool isReply, CancellationToken token, DateTimeOffset? receivedBefore = null)
     {
-        var incoming = await LatestReceivedAsync(token);
-        if (incoming is null)
-            return new(Resources.Commands_NoIncomingSmsToReply);
+        var lineId = state.Snapshot.SelectedLine;
+        string? recipient = null;
+        if (isReply)
+        {
+            var incoming = await LatestReceivedAsync(token, receivedBefore);
+            if (incoming is null)
+                return new(Resources.Commands_NoIncomingSmsToReply);
 
-        var recipient = NormalizeRecipient(incoming.Sender);
-        if (recipient is null)
-            return new(Resources.Commands_ReplySenderNotNumber);
+            recipient = NormalizeRecipient(incoming.Sender);
+            if (recipient is null)
+                return new(Resources.Commands_ReplySenderNotNumber);
 
-        return new(string.Format(settings.Language, Resources.Commands_ReplyTextPrompt, recipient),
-            NextInput: new PendingInput.SmsText(recipient, incoming));
+            lineId = incoming.ModuleId;
+        }
+
+        var overview = await bridge.GetOverviewAsync(token);
+        if (GetSmsAvailabilityError(overview) is { } error)
+            return new(error);
+
+        var lines = overview.Lines.Where(line => line.SupportsSms).ToArray();
+        if (!isReply && lineId is null)
+        {
+            lineId = (await LatestReceivedAsync(token))?.ModuleId;
+            if (lineId is null && lines.Length == 1)
+                lineId = lines[0].Id;
+        }
+
+        if (string.IsNullOrWhiteSpace(lineId))
+            return new(isReply ? Resources.Commands_ReplyLineUnknown : Resources.Commands_NoIncomingSms);
+
+        var line = lines.FirstOrDefault(line => line.Id == lineId);
+        if (line is null)
+            return new(LineUnavailable(lineId, isReply));
+
+        return recipient is null
+            ? new(WithSender(Resources.Commands_RecipientPrompt, line), NextInput: new PendingInput.PhoneNumber(line))
+            : PromptForReplyText(new PendingInput.SmsText(recipient, line, IsReply: true));
     }
+
+    private BotResponse PromptForReplyText(PendingInput.SmsText sms) =>
+        new(WithSender(string.Format(settings.Language, Resources.Commands_ReplyTextPrompt, sms.Recipient), sms.Line),
+            NextInput: sms);
 
     private static string? NormalizeRecipient(string? input)
     {
@@ -269,36 +317,49 @@ internal sealed class Worker(
         return RecipientNumber.IsMatch(recipient) ? recipient : null;
     }
 
-    private async Task<string> QueueSmsAsync(string recipient, string text, ReceivedSms? incoming, CancellationToken token)
+    private static string? GetSmsAvailabilityError(BridgeOverview overview) => overview.Bridge.SmsEnabled switch
+    {
+        null => Resources.Commands_SmsSendingUnsupported,
+        false => Resources.Commands_SmsSendingDisabled,
+        true when !overview.Lines.Any(line => line.SupportsSms) => Resources.Commands_NoImsLines,
+        _ => null
+    };
+
+    private string LineUnavailable(string id, bool isReply) => string.Format(settings.Language,
+        isReply ? Resources.Commands_ReplyLineUnavailable : Resources.Commands_LineUnavailableForSending, id);
+
+    private static string? SenderNumber(BridgeLine line) => string.IsNullOrWhiteSpace(line.Msisdn) ? null : line.Msisdn.Trim();
+
+    private string WithSender(string text, BridgeLine line) => text + "\n\n" + string.Format(settings.Language,
+        Resources.Commands_SendingFrom, line.Id, SenderNumber(line) ?? Resources.Commands_SenderNumberUnknown);
+
+    private async Task<BotResponse> SubmitSmsAsync(PendingInput.SmsText sms, string text, CancellationToken token)
     {
         var overview = await bridge.GetOverviewAsync(token);
-        if (overview.Bridge.SmsEnabled is null)
-            return Resources.Commands_SmsSendingUnsupported;
-        if (overview.Bridge.SmsEnabled == false)
-            return Resources.Commands_SmsSendingDisabled;
+        var pendingReply = sms.IsReply ? sms : null;
+        if (GetSmsAvailabilityError(overview) is { } error)
+            return new(WithSender(error, sms.Line), NextInput: pendingReply);
 
-        var lines = overview.Lines.Where(line => line.SupportsSms).ToArray();
-        if (lines.Length == 0)
-            return Resources.Commands_NoImsLines;
+        var line = overview.Lines.FirstOrDefault(line => line.SupportsSms && line.Id == sms.Line.Id);
+        if (line is null)
+            return new(WithSender(LineUnavailable(sms.Line.Id, sms.IsReply), sms.Line), NextInput: pendingReply);
 
-        var id = incoming is not null
-            ? incoming.ModuleId
-            : state.Snapshot.SelectedLine ?? (await LatestReceivedAsync(token))?.ModuleId;
-        if (incoming is null && id is null && lines.Length == 1)
-            id = lines[0].Id;
+        if (SenderNumber(line) != SenderNumber(sms.Line))
+            return sms.IsReply
+                ? new(WithSender(Resources.Commands_ReplySenderNumberChanged, sms.Line), NextInput: sms)
+                : new(WithSender(Resources.Commands_SenderNumberChanged, line), NextInput: sms with { Line = line });
 
-        if (string.IsNullOrWhiteSpace(id))
-            return incoming is null ? Resources.Commands_NoIncomingSms : Resources.Commands_ReplyLineUnknown;
+        var result = await QueueSmsAsync(line.Id, sms.Recipient, text, token);
+        return new(WithSender(result, line));
+    }
 
-        if (!lines.Any(line => line.Id == id))
-            return string.Format(settings.Language,
-                incoming is null ? Resources.Commands_LineUnavailableForSending : Resources.Commands_ReplyLineUnavailable, id);
-
+    private async Task<string> QueueSmsAsync(string lineId, string recipient, string text, CancellationToken token)
+    {
         try
         {
-            var queued = await bridge.SendAsync(id, recipient, text, token);
+            var queued = await bridge.SendAsync(lineId, recipient, text, token);
             logger.LogInformation("Bridge queued SMS {SmsId} with {PartCount} parts.", queued.Id, queued.Parts);
-            return string.Format(settings.Language, Resources.Commands_SmsQueued, queued.Id, queued.Parts, id);
+            return string.Format(settings.Language, Resources.Commands_SmsQueued, queued.Id, queued.Parts);
         }
         catch (BridgeException error) when (error.Error != "wrong_line_agent" && (int)error.Status >= 500)
         {
@@ -310,6 +371,10 @@ internal sealed class Worker(
             logger.LogWarning(error, "Bridge rejected SMS submission with HTTP {StatusCode}.", (int)error.Status);
             return string.Format(settings.Language, Resources.Commands_SmsSubmissionRejected, error.Detail);
         }
+        catch (BridgeException error)
+        {
+            return DescribeBridgeError(error);
+        }
         catch (Exception error) when (!token.IsCancellationRequested &&
             error is HttpRequestException or JsonException or OperationCanceledException)
         {
@@ -318,12 +383,20 @@ internal sealed class Worker(
         }
     }
 
+    private string DescribeBridgeError(BridgeException error)
+    {
+        logger.LogWarning(error, "Bridge WebUI request failed with HTTP {StatusCode}.", (int)error.Status);
+        return error.Status == HttpStatusCode.Unauthorized
+            ? Resources.Commands_BridgeLoginRejected
+            : string.Format(settings.Language, Resources.Commands_BridgeHttpError, (int)error.Status);
+    }
+
     private sealed record BotResponse(string Text, ReplyMarkup? Keyboard = null, PendingInput? NextInput = null);
 
     private abstract record PendingInput
     {
-        public sealed record PhoneNumber : PendingInput;
-        public sealed record SmsText(string Recipient, ReceivedSms? Incoming = null) : PendingInput;
-        public sealed record Line : PendingInput;
+        public sealed record PhoneNumber(BridgeLine Line) : PendingInput;
+        public sealed record SmsText(string Recipient, BridgeLine Line, bool IsReply) : PendingInput;
+        public sealed record LineSelection : PendingInput;
     }
 }

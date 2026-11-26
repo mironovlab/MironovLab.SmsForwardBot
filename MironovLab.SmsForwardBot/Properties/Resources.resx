@@ -124,7 +124,9 @@
 /line — select the sending line
 /auto — use the line that received the last incoming SMS
 /cancel — cancel the current action
-/help — show the keyboard and keep the current action</value>
+/help — show the keyboard and keep the current action
+
+While composing a reply, use /cancel to start over.</value>
   </data>
   <data name="Commands_LinesButton" xml:space="preserve">
     <value>Lines</value>
@@ -202,7 +204,7 @@
     <value>Sending line: {0}.</value>
   </data>
   <data name="Commands_RecipientPrompt" xml:space="preserve">
-    <value>Enter the recipient's number, for example +351912345678.</value>
+    <value>Enter the recipient's number, for example +79001234567.</value>
   </data>
   <data name="Commands_InvalidRecipient" xml:space="preserve">
     <value>Enter the number again. Use 3 to 20 digits, with an optional leading +. The bot removes spaces, dashes, and parentheses.</value>
@@ -212,6 +214,21 @@
   </data>
   <data name="Commands_ReplyTextPrompt" xml:space="preserve">
     <value>Enter your reply to {0}.</value>
+  </data>
+  <data name="Commands_CompletePendingReply" xml:space="preserve">
+    <value>Send the current reply or press Cancel to start another action.</value>
+  </data>
+  <data name="Commands_ReplySenderNumberChanged" xml:space="preserve">
+    <value>The sender number on this line has changed. Press Cancel to start the reply again.</value>
+  </data>
+  <data name="Commands_SendingFrom" xml:space="preserve">
+    <value>Sending line {0} · sender number {1}</value>
+  </data>
+  <data name="Commands_SenderNumberUnknown" xml:space="preserve">
+    <value>unavailable from the bridge</value>
+  </data>
+  <data name="Commands_SenderNumberChanged" xml:space="preserve">
+    <value>The sender number was updated. Enter the SMS text again.</value>
   </data>
   <data name="Commands_InvalidSmsText" xml:space="preserve">
     <value>Send the SMS text as a non-empty text message.</value>
@@ -250,7 +267,7 @@
     <value>Line {0} is unavailable for sending SMS. Use /line to choose an available line.</value>
   </data>
   <data name="Commands_SmsQueued" xml:space="preserve">
-    <value>The bridge queued SMS #{0} on line {2} ({1} parts).</value>
+    <value>The bridge queued SMS #{0} ({1} parts).</value>
   </data>
   <data name="Commands_SmsSubmissionHttpError" xml:space="preserve">
     <value>The bridge returned HTTP {0}. The send outcome is unknown. Check SMS Outbox in the WebUI.</value>

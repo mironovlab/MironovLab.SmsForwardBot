@@ -122,6 +122,15 @@ namespace MironovLab.SmsForwardBot.Properties {
                 return ResourceManager.GetString("Commands_CancelButton", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Send the current reply or press Cancel to start another action..
+        /// </summary>
+        internal static string Commands_CompletePendingReply {
+            get {
+                return ResourceManager.GetString("Commands_CompletePendingReply", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to /send — enter the number and text to send an SMS
@@ -130,7 +139,9 @@ namespace MironovLab.SmsForwardBot.Properties {
         ////line — select the sending line
         ////auto — use the line that received the last incoming SMS
         ////cancel — cancel the current action
-        ////help — show the keyboard and keep the current action.
+        ////help — show the keyboard and keep the current action
+        ///
+        ///While composing a reply, use /cancel to start over..
         /// </summary>
         internal static string Commands_Help {
             get {
@@ -301,7 +312,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Enter the recipient&apos;s number, for example +351912345678..
+        ///   Looks up a localized string similar to Enter the recipient&apos;s number, for example +79001234567..
         /// </summary>
         internal static string Commands_RecipientPrompt {
             get {
@@ -353,6 +364,15 @@ namespace MironovLab.SmsForwardBot.Properties {
                 return ResourceManager.GetString("Commands_ReplySenderNotNumber", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The sender number on this line has changed. Press Cancel to start the reply again..
+        /// </summary>
+        internal static string Commands_ReplySenderNumberChanged {
+            get {
+                return ResourceManager.GetString("Commands_ReplySenderNumberChanged", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to Enter your reply to {0}..
@@ -391,6 +411,24 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The sender number was updated. Enter the SMS text again..
+        /// </summary>
+        internal static string Commands_SenderNumberChanged {
+            get {
+                return ResourceManager.GetString("Commands_SenderNumberChanged", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to unavailable from the bridge.
+        /// </summary>
+        internal static string Commands_SenderNumberUnknown {
+            get {
+                return ResourceManager.GetString("Commands_SenderNumberUnknown", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to How to send SMS.
         /// </summary>
         internal static string Commands_SendHelpButton {
@@ -399,6 +437,15 @@ namespace MironovLab.SmsForwardBot.Properties {
             }
         }
         
+        /// <summary>
+        ///   Looks up a localized string similar to Sending line {0} · sender number {1}.
+        /// </summary>
+        internal static string Commands_SendingFrom {
+            get {
+                return ResourceManager.GetString("Commands_SendingFrom", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to Enter the SMS text for {0}..
         /// </summary>
@@ -418,7 +465,7 @@ namespace MironovLab.SmsForwardBot.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to The bridge queued SMS #{0} on line {2} ({1} parts)..
+        ///   Looks up a localized string similar to The bridge queued SMS #{0} ({1} parts)..
         /// </summary>
         internal static string Commands_SmsQueued {
             get {

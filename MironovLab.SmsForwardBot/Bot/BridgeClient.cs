@@ -21,12 +21,19 @@ internal sealed class BridgeClient(BotSettings settings) : IDisposable
         return await ReadAsync<BridgeOverview>(response, token);
     }
 
-    public async Task<ReceivedSms?> GetLatestReceivedSmsAsync(CancellationToken token)
+    public async Task<ReceivedSms?> GetLatestReceivedSmsAsync(CancellationToken token, DateTimeOffset? receivedBefore = null)
     {
-        using var response = await RequestAsync(HttpMethod.Get, "api/sms?page=1&per_page=1", null, token);
-        await EnsureSuccessAsync(response, token);
-        var page = await ReadAsync<BridgeInbox>(response, token);
-        return page.Items.FirstOrDefault();
+        var pageSize = receivedBefore.HasValue ? 50 : 1;
+        for (var pageNumber = 1; ; pageNumber++)
+        {
+            var path = $"api/sms?page={pageNumber}&per_page={pageSize}";
+            using var response = await RequestAsync(HttpMethod.Get, path, null, token);
+            await EnsureSuccessAsync(response, token);
+            var page = await ReadAsync<BridgeInbox>(response, token);
+            var received = page.Items.FirstOrDefault(sms => receivedBefore is null || sms.ReceivedAt < receivedBefore);
+            if (received is not null || page.Items.Length < pageSize)
+                return received;
+        }
     }
 
     public async Task<QueuedSms> SendAsync(string line, string to, string text, CancellationToken token)

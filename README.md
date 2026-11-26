@@ -99,6 +99,6 @@ In automatic mode, the bot checks the bridge's SMS history and the webhooks it h
 
 For `/send` and `/reply`, the bot strips spaces, hyphens, and parentheses from the number. The resulting number must contain 3 to 20 digits and may start with a single `+`.
 
-When `/reply` prompts for the reply text, it records the sender's number and the line that received the last incoming SMS. The line must support sending. Manual selection through `/line` applies to `/send`.
+When you press Reply to SMS, the bot records the recipient's number and line from the last incoming SMS. Those details stay fixed until you send or cancel the reply, even if another SMS arrives. The line must support sending. Manual selection through `/line` applies to `/send`.
 
 The bot first shows the SMS Outbox entry number. It then forwards a send report once the SMS center has accepted all parts or the bridge has finished its send attempts. If carrier delivery reports are enabled, the bot also forwards the final delivery status. The message may be fully delivered, partially delivered, undelivered, or marked with an unknown status if the carrier's report does not arrive in time. The SMS Outbox entry number in both notifications links them to the original `/send` or `/reply` command.

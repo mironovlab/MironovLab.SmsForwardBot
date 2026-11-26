@@ -124,7 +124,9 @@
 /line — выбрать линию для отправки
 /auto — использовать линию последнего входящего SMS
 /cancel — отменить текущее действие
-/help — показать клавиатуру и сохранить текущее действие</value>
+/help — показать клавиатуру и сохранить текущее действие
+
+Чтобы начать ответ заново, используйте /cancel.</value>
   </data>
   <data name="Commands_LinesButton" xml:space="preserve">
     <value>Линии</value>
@@ -202,7 +204,7 @@
     <value>Линия для отправки: {0}.</value>
   </data>
   <data name="Commands_RecipientPrompt" xml:space="preserve">
-    <value>Введите номер получателя, например +351912345678.</value>
+    <value>Введите номер получателя, например +79001234567.</value>
   </data>
   <data name="Commands_InvalidRecipient" xml:space="preserve">
     <value>Введите номер ещё раз. Укажите от 3 до 20 цифр. В начале можно поставить +. Пробелы, тире и круглые скобки бот уберёт.</value>
@@ -212,6 +214,21 @@
   </data>
   <data name="Commands_ReplyTextPrompt" xml:space="preserve">
     <value>Введите текст ответа для {0}.</value>
+  </data>
+  <data name="Commands_CompletePendingReply" xml:space="preserve">
+    <value>Отправьте текущий ответ или нажмите «Отмена», чтобы начать другое действие.</value>
+  </data>
+  <data name="Commands_ReplySenderNumberChanged" xml:space="preserve">
+    <value>Номер отправителя на этой линии изменился. Нажмите «Отмена», чтобы начать ответ заново.</value>
+  </data>
+  <data name="Commands_SendingFrom" xml:space="preserve">
+    <value>Линия отправки {0} · номер отправителя {1}</value>
+  </data>
+  <data name="Commands_SenderNumberUnknown" xml:space="preserve">
+    <value>не указан мостом</value>
+  </data>
+  <data name="Commands_SenderNumberChanged" xml:space="preserve">
+    <value>Данные о номере отправителя обновились. Введите текст SMS ещё раз.</value>
   </data>
   <data name="Commands_InvalidSmsText" xml:space="preserve">
     <value>Введите текст SMS и отправьте его сообщением.</value>
@@ -250,7 +267,7 @@
     <value>Линия {0} недоступна для отправки SMS. Выберите доступную линию командой /line.</value>
   </data>
   <data name="Commands_SmsQueued" xml:space="preserve">
-    <value>Мост поставил SMS в очередь (№{0}, частей: {1}, линия: {2}).</value>
+    <value>Мост поставил SMS в очередь (№{0}, частей: {1}).</value>
   </data>
   <data name="Commands_SmsSubmissionHttpError" xml:space="preserve">
     <value>Мост вернул HTTP {0}. Результат отправки неизвестен. Проверьте SMS Outbox в WebUI.</value>
